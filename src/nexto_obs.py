@@ -339,18 +339,12 @@ class NextoObsBuilder(BatchedObsBuilder):
         #         axis=-1,
         #     )
         # )
-        should_change = kv[
-            np.square(kv[..., POS.start]) + np.square(kv[..., POS.start + 1])
-            > MAX_REL_POS_DIFF_LEN * MAX_REL_POS_DIFF_LEN,
-            POS.start : POS.start + 2,
-        ]
-        lens = np.sqrt(np.square(should_change[:, 0]) + np.square(should_change[:, 1]))
-        kv[
-            np.square(kv[..., POS.start]) + np.square(kv[..., POS.start + 1])
-            > MAX_REL_POS_DIFF_LEN * MAX_REL_POS_DIFF_LEN,
-            POS.start : POS.start + 2,
-        ] = (
-            should_change / np.stack([lens, lens], axis=1) * MAX_REL_POS_DIFF_LEN
+        lens = np.linalg.norm(kv[..., POS], axis=-1)
+        filtered_lens = lens[lens > MAX_REL_POS_DIFF_LEN]
+        kv[lens > MAX_REL_POS_DIFF_LEN, POS] = (
+            kv[lens > MAX_REL_POS_DIFF_LEN, POS]
+            / np.stack([filtered_lens] * 3, axis=-1)
+            * MAX_REL_POS_DIFF_LEN
         )
 
     def batched_build_obs(self, encoded_states: np.ndarray, should_print=False):
