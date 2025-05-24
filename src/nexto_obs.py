@@ -318,33 +318,25 @@ class NextoObsBuilder(BatchedObsBuilder):
         kv[..., POS.start + 1 : ANG_VEL.stop : 3] = ny  # y-components
         # modify relative components to be within distribution for what's possible on a standard map
         # This method uses a nonlinear scaling method to make sure everything stays within a certain distance away
-        # lens = np.linalg.norm(kv[..., POS], axis=-1)
-        # should_modify = kv[lens > 0.1]
-        # filtered_lens = lens[lens > 0.1]
-        # kv[lens > 0.1, POS] = (
-        #     kv[lens > 0.1, POS]
-        #     / np.stack([filtered_lens] * 3, axis=-1)
-        #     * np.stack(
-        #         [
-        #             (
-        #                 MAX_REL_POS_DIFF_LEN
-        #                 * filtered_lens
-        #                 / (
-        #                     MAX_REL_POS_DIFF_LEN * MAX_REL_POS_DIFF_LEN
-        #                     + filtered_lens * filtered_lens
-        #                 )
-        #             )
-        #         ]
-        #         * 3,
-        #         axis=-1,
-        #     )
-        # )
         lens = np.linalg.norm(kv[..., POS], axis=-1)
-        filtered_lens = lens[lens > MAX_REL_POS_DIFF_LEN]
-        kv[lens > MAX_REL_POS_DIFF_LEN, POS] = (
-            kv[lens > MAX_REL_POS_DIFF_LEN, POS]
+        filtered_lens = lens[lens > 0.1]
+        kv[lens > 0.1, POS] = (
+            kv[lens > 0.1, POS]
             / np.stack([filtered_lens] * 3, axis=-1)
-            * MAX_REL_POS_DIFF_LEN
+            * np.stack(
+                [
+                    (
+                        MAX_REL_POS_DIFF_LEN
+                        * filtered_lens
+                        / (
+                            MAX_REL_POS_DIFF_LEN * MAX_REL_POS_DIFF_LEN
+                            + filtered_lens * filtered_lens
+                        )
+                    )
+                ]
+                * 3,
+                axis=-1,
+            )
         )
 
     def batched_build_obs(self, encoded_states: np.ndarray, should_print=False):
