@@ -316,28 +316,6 @@ class NextoObsBuilder(BatchedObsBuilder):
         ny = st * xs + ct * ys
         kv[..., POS.start : ANG_VEL.stop : 3] = nx  # x-components
         kv[..., POS.start + 1 : ANG_VEL.stop : 3] = ny  # y-components
-        # modify relative components to be within distribution for what's possible on a standard map
-        # This method uses a nonlinear scaling method to make sure everything stays within a certain distance away
-        lens = np.linalg.norm(kv[..., POS], axis=-1)
-        filtered_lens = lens[lens > 0.1]
-        kv[lens > 0.1, POS] = (
-            kv[lens > 0.1, POS]
-            / np.stack([filtered_lens] * 3, axis=-1)
-            * np.stack(
-                [
-                    (
-                        MAX_REL_POS_DIFF_LEN
-                        * filtered_lens
-                        / (
-                            MAX_REL_POS_DIFF_LEN * MAX_REL_POS_DIFF_LEN
-                            + filtered_lens * filtered_lens
-                        )
-                    )
-                ]
-                * 3,
-                axis=-1,
-            )
-        )
 
     def batched_build_obs(self, encoded_states: np.ndarray, should_print=False):
         ball_start_index = 3 + len(self._boost_locations)
@@ -406,16 +384,13 @@ class NextoObsBuilder(BatchedObsBuilder):
 
         kv /= self._norm
 
-        # kv[..., POS.start] = kv[..., POS.start] / 2
-        # kv[..., POS.start + 1] = kv[..., POS.start + 1] / 2
+        kv[..., POS.start] = kv[..., POS.start] / 2
+        kv[..., POS.start + 1] = kv[..., POS.start + 1] / 2
 
         for i in range(n_players):
             q[i, :, 0, : kv.shape[-1]] = kv[i, :, i, :].copy()
 
         self.convert_to_relative(q, kv, should_print=should_print)
-        # Convert absolute positions of query to be halved so that they are within distribution
-        q[..., POS.start] = q[..., POS.start] / 2
-        q[..., POS.start + 1] = q[..., POS.start + 1] / 2
         # kv[:, :, :, 5:11] -= q[:, :, :, 5:11]
 
         # MASK
